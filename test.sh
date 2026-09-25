@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016,SC1091  # eval-strenger og source er med vilje
+# Røyktest for pr-worktree.sh mot et temp-repo med falsk `gh`. Kjør: bash test.sh
+set -u
+here=$(cd "$(dirname "$0")" && pwd)
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+# Falsk gh: `pr checkout N` lager branch feature-N, `pr view N` sier PR 1 er merget.
+mkdir "$tmp/bin"
+cat >"$tmp/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "pr checkout") git checkout -q -b "feature-$3" ;;
+  "pr view") [[ $3 == 1 ]] && echo MERGED || echo OPEN ;;
+esac
+EOF
+chmod +x "$tmp/bin/gh"
+PATH="$tmp/bin:$PATH"
+
+git init -q "$tmp/repo" && cd "$tmp/repo" || exit 1
+git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+mkdir sub
+source "$here/pr-worktree.sh"
+
+fail=0
+check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
+
+cd sub && pr 1 >/dev/null
+check "pr <nr> fra undermappe havner i ../repo-pr-1" '[[ $PWD == "$tmp/repo-pr-1" ]]'
+check "branch sjekket ut" '[[ $(git branch --show-current) == feature-1 ]]'
+pr '#2' >/dev/null
+check "#2 fra inni en worktree havner ved siden av repoet" '[[ $PWD == "$tmp/repo-pr-2" ]]'
+cd "$tmp/repo" && pr https://github.com/o/r/pull/1 >/dev/null
+check "eksisterende worktree gjenbrukes" '[[ $PWD == "$tmp/repo-pr-1" ]]'
+check "list viser begge" '[[ $(pr ls | wc -l) -eq 2 ]]'
+
+touch dirty
+pr clean 1 2>/dev/null
+check "clean nekter ved ulagrede endringer" '[[ -d $tmp/repo-pr-1 ]]'
+pr clean --merged --force >/dev/null
+check "clean --merged --force fjerner PR 1" '[[ ! -d $tmp/repo-pr-1 ]]'
+check "... og står ikke i slettet katalog" '[[ $PWD == "$tmp/repo" ]]'
+check "... og sletter branchen" '! git show-ref -q refs/heads/feature-1'
+check "PR 2 er urørt" '[[ -d $tmp/repo-pr-2 ]]'
+
+pr config worktrees >/dev/null && cd sub && pr 3 >/dev/null
+check "config er relativ til repo-roten" '[[ $PWD == "$tmp/repo/worktrees/repo-pr-3" ]]'
+check "ugyldig PR avvises" '! pr abc 2>/dev/null'
+exit $fail
