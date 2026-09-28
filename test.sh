@@ -47,4 +47,10 @@ check "PR 2 er urørt" '[[ -d $tmp/repo-pr-2 ]]'
 pr config worktrees >/dev/null && cd sub && pr 3 >/dev/null
 check "config er relativ til repo-roten" '[[ $PWD == "$tmp/repo/worktrees/repo-pr-3" ]]'
 check "ugyldig PR avvises" '! pr abc 2>/dev/null'
+
+cd /
+"$here/install.sh" "$tmp/rc" >/dev/null 2>&1
+"$here/install.sh" "$tmp/rc" >/dev/null 2>&1
+check "install legger til source-linje én gang" '[[ $(grep -c "source \"$here/pr-worktree.sh\"" "$tmp/rc") -eq 1 ]]'
+check "install fra annen katalog peker på repoet" 'bash -c "source $tmp/rc && type pr" >/dev/null'
 exit $fail

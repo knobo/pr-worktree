@@ -18,9 +18,13 @@ and [`fzf`](https://github.com/junegunn/fzf) for interactive picking (optional i
 pass a PR number). Works in bash and zsh.
 
 ```sh
-git clone https://github.com/knobo/pr-worktree ~/.pr-worktree
-echo 'source ~/.pr-worktree/pr-worktree.sh' >> ~/.bashrc   # or ~/.zshrc
+git clone https://github.com/knobo/pr-worktree
+cd pr-worktree
+./install.sh            # or: ./install.sh ~/.some-other-rc
 ```
+
+`install.sh` adds a `source` line pointing at wherever you cloned the repo to `~/.zshrc`
+(if your shell is zsh) or `~/.bashrc`. Running it again does nothing. To update, `git pull`.
 
 `pr` is a shell function rather than a script because it has to `cd` your shell into the worktree.
 
@@ -60,8 +64,10 @@ you run it from the root, a subdirectory, or another worktree.
 
 ```sh
 bash test.sh          # smoke test against a temp repo with a stubbed gh
-shellcheck -s bash pr-worktree.sh
+shellcheck -s bash pr-worktree.sh && shellcheck test.sh install.sh
 ```
+
+CI runs both of these, plus a zsh load check, on every push and PR.
 
 ## License
 
