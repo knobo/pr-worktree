@@ -182,7 +182,7 @@ if [[ -n ${ZSH_VERSION-} ]]; then
         elif [[ ${words[2]} == rm || ${words[2]} == clean ]]; then compadd -- --force --merged
         fi
     }
-    whence compdef >/dev/null && compdef _pr_zsh pr
+    if whence compdef >/dev/null; then compdef _pr_zsh pr; fi
 else
     _pr_bash() {
         local cur=${COMP_WORDS[COMP_CWORD]} w=""
