@@ -31,7 +31,7 @@ check "pr <nr> fra undermappe havner i ../repo-pr-1" '[[ $PWD == "$tmp/repo-pr-1
 check "branch sjekket ut" '[[ $(git branch --show-current) == feature-1 ]]'
 pr '#2' >/dev/null
 check "#2 fra inni en worktree havner ved siden av repoet" '[[ $PWD == "$tmp/repo-pr-2" ]]'
-cd "$tmp/repo" && pr https://github.com/o/r/pull/1 >/dev/null
+cd "$tmp/repo" && pr https://github.com/o/r/pull/1/files >/dev/null
 check "eksisterende worktree gjenbrukes" '[[ $PWD == "$tmp/repo-pr-1" ]]'
 check "list viser begge" '[[ $(pr ls | wc -l) -eq 2 ]]'
 
@@ -43,6 +43,8 @@ check "clean --merged --force fjerner PR 1" '[[ ! -d $tmp/repo-pr-1 ]]'
 check "... og står ikke i slettet katalog" '[[ $PWD == "$tmp/repo" ]]'
 check "... og sletter branchen" '! git show-ref -q refs/heads/feature-1'
 check "PR 2 er urørt" '[[ -d $tmp/repo-pr-2 ]]'
+ln -s "$tmp/repo-pr-2" "$tmp/lenke" && cd "$tmp/lenke" && pr clean --force 2 >/dev/null
+check "clean via symlink flytter deg ut av worktreen" '[[ -d $PWD && ! -d $tmp/repo-pr-2 ]]'
 
 pr config worktrees >/dev/null && cd sub && pr 3 >/dev/null
 check "config er relativ til repo-roten" '[[ $PWD == "$tmp/repo/worktrees/repo-pr-3" ]]'
@@ -52,5 +54,5 @@ cd /
 "$here/install.sh" "$tmp/rc" >/dev/null 2>&1
 "$here/install.sh" "$tmp/rc" >/dev/null 2>&1
 check "install legger til source-linje én gang" '[[ $(grep -c "source \"$here/pr-worktree.sh\"" "$tmp/rc") -eq 1 ]]'
-check "install fra annen katalog peker på repoet" 'bash -c "source $tmp/rc && type pr" >/dev/null'
+check "install fra annen katalog peker på repoet" 'bash -c "source $tmp/rc && declare -F pr" >/dev/null'
 exit $fail

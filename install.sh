@@ -4,7 +4,7 @@
 set -eu
 dir=$(cd "$(dirname "$0")" && pwd)
 case ${SHELL-} in
-    */zsh) default_rc=~/.zshrc ;;
+    */zsh) default_rc=${ZDOTDIR:-$HOME}/.zshrc ;;
     *) default_rc=~/.bashrc ;;
 esac
 rc=${1:-$default_rc}

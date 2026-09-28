@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get install -y zsh
+      - run: sudo apt-get update && sudo apt-get install -y zsh
       - name: shellcheck
         run: shellcheck -s bash pr-worktree.sh && shellcheck test.sh install.sh
       - name: test
         run: bash test.sh
-      - name: zsh loads the function
-        run: zsh -c 'source ./pr-worktree.sh && pr help'
+      - name: test (zsh)
+        run: zsh test.sh
