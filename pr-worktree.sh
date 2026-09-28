@@ -7,18 +7,17 @@
 
 _pr_err() { echo "pr: $*" >&2; }
 
-# Roten til hovedrepoet. Gir samme svar fra roten, en undermappe eller en worktree.
+# Roten til hovedrepoet (første worktree). Samme svar fra roten, en undermappe eller en
+# annen worktree, og riktig også for submoduler og --separate-git-dir.
 _pr_root() {
-    local common
-    common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
-    dirname "$common"
+    git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p' | grep .
 }
 
 # Katalogen PR-worktrees legges i. Relative stier regnes fra repo-roten.
 _pr_wt_dir() {
     local root dir
     root=$(_pr_root) || return 1
-    dir=$(git config --get pr.worktreedir)
+    dir=$(git config --type=path --get pr.worktreedir)
     if [[ -z $dir ]]; then
         if [[ -d $root/worktrees ]]; then dir=worktrees
         elif [[ -d $root/../worktrees ]]; then dir=../worktrees
@@ -34,11 +33,11 @@ _pr_worktrees() {
     git worktree list --porcelain | sed -n 's/^worktree //p' | grep -E '(/|-)pr-[0-9]+$'
 }
 
-# Godtar 123, #123 og https://github.com/o/r/pull/123. Skriver ut nummeret.
+# Godtar 123, #123 og PR-URL-er (også .../pull/123/files og ...#issuecomment-1).
 _pr_num() {
-    local n=${1%/}
-    n=${n##*/}
-    n=${n#\#}
+    local n=${1#\#}
+    n=${n#*/pull/}
+    n=${n%%[/#?]*}
     [[ $n =~ ^[0-9]+$ ]] || { _pr_err "Ugyldig PR: $1"; return 1; }
     echo "$n"
 }
@@ -111,11 +110,12 @@ _pr_clean() {
     [[ ${#targets[@]} -gt 0 ]] || { echo "Ingenting å rydde."; return 0; }
 
     root=$(_pr_root) || return 1
-    local del=-d
+    local here del=-d
+    here=$(pwd -P)
     [[ -n $force ]] && del=-D
     for wt in "${targets[@]}"; do
         # Ikke bli stående i en katalog som slettes.
-        [[ $PWD == "$wt" || $PWD == "$wt"/* ]] && { cd "$root" || return 1; }
+        [[ $here == "$wt" || $here == "$wt"/* ]] && { cd "$root" || return 1; }
         branch=$(git -C "$wt" branch --show-current 2>/dev/null)
         if ! git -C "$root" worktree remove ${force:+--force} "$wt"; then
             _pr_err "Beholdt $wt (ulagrede endringer? bruk --force)"
@@ -182,7 +182,7 @@ if [[ -n ${ZSH_VERSION-} ]]; then
         elif [[ ${words[2]} == rm || ${words[2]} == clean ]]; then compadd -- --force --merged
         fi
     }
-    whence compdef >/dev/null && compdef _pr_zsh pr
+    if whence compdef >/dev/null; then compdef _pr_zsh pr; fi
 else
     _pr_bash() {
         local cur=${COMP_WORDS[COMP_CWORD]} w=""

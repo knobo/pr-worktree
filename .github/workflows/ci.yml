@@ -1,0 +1,18 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: shellcheck
+        run: shellcheck -s bash pr-worktree.sh && shellcheck test.sh install.sh
+      - name: test
+        run: bash test.sh
+      - name: test (zsh)
+        run: zsh test.sh
