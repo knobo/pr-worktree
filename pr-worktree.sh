@@ -65,8 +65,10 @@ _pr_checkout() {
     fi
 
     wt=$(_pr_find "$num")
-    # Branchen kan være sjekket ut i en worktree som ikke heter *-pr-N.
-    [[ -n $wt ]] || wt=$(_pr_branch_wt "$(gh pr view "$num" --json headRefName -q .headRefName 2>/dev/null)")
+    # Branchen kan være sjekket ut i en worktree som ikke heter *-pr-N. Ikke for forks:
+    # der er headRefName forkens navn (ofte main) og peker ikke på en lokal branch.
+    [[ -n $wt ]] || wt=$(_pr_branch_wt "$(gh pr view "$num" --json headRefName,isCrossRepository \
+        -q 'select(.isCrossRepository | not).headRefName' 2>/dev/null)")
     if [[ -n $wt ]]; then
         echo "PR #$num har allerede worktree: $wt"
         cd "$wt" || return 1

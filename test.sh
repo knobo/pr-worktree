@@ -13,7 +13,7 @@ cat >"$tmp/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$1 $2" in
   "pr checkout") git checkout -q -b "feature-$3" ;;
-  "pr view") if [[ $5 == headRefName ]]; then echo "feature-$3"
+  "pr view") if [[ $5 == headRefName* ]]; then echo "feature-$3"
              elif [[ $3 == 1 ]]; then echo MERGED; else echo OPEN; fi ;;
 esac
 EOF
