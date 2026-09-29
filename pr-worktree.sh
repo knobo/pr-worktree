@@ -44,6 +44,12 @@ _pr_num() {
 
 _pr_find() { _pr_worktrees | grep -E "(/|-)pr-$1\$" | head -n 1; }
 
+# Worktree der en branch allerede er sjekket ut (tom hvis ingen).
+_pr_branch_wt() {
+    git worktree list --porcelain |
+        awk -v b="branch refs/heads/$1" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}'
+}
+
 _pr_need() { command -v "$1" >/dev/null || { _pr_err "$1 er ikke installert."; return 1; }; }
 
 _pr_checkout() {
@@ -59,6 +65,8 @@ _pr_checkout() {
     fi
 
     wt=$(_pr_find "$num")
+    # Branchen kan være sjekket ut i en worktree som ikke heter *-pr-N.
+    [[ -n $wt ]] || wt=$(_pr_branch_wt "$(gh pr view "$num" --json headRefName -q .headRefName 2>/dev/null)")
     if [[ -n $wt ]]; then
         echo "PR #$num har allerede worktree: $wt"
         cd "$wt" || return 1

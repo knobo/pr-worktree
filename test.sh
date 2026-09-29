@@ -6,13 +6,15 @@ here=$(cd "$(dirname "$0")" && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# Falsk gh: `pr checkout N` lager branch feature-N, `pr view N` sier PR 1 er merget.
+# Falsk gh: `pr checkout N` lager branch feature-N, `pr view N` gir headRefName feature-N
+# og sier PR 1 er merget.
 mkdir "$tmp/bin"
 cat >"$tmp/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$1 $2" in
   "pr checkout") git checkout -q -b "feature-$3" ;;
-  "pr view") [[ $3 == 1 ]] && echo MERGED || echo OPEN ;;
+  "pr view") if [[ $5 == headRefName ]]; then echo "feature-$3"
+             elif [[ $3 == 1 ]]; then echo MERGED; else echo OPEN; fi ;;
 esac
 EOF
 chmod +x "$tmp/bin/gh"
@@ -48,6 +50,8 @@ check "clean via symlink flytter deg ut av worktreen" '[[ -d $PWD && ! -d $tmp/r
 
 pr config worktrees >/dev/null && cd sub && pr 3 >/dev/null
 check "config er relativ til repo-roten" '[[ $PWD == "$tmp/repo/worktrees/repo-pr-3" ]]'
+git worktree add -q -b feature-5 "$tmp/egen" 2>/dev/null && pr 5 >/dev/null
+check "branch sjekket ut i annen worktree: hopp dit" '[[ $PWD == "$tmp/egen" && ! -d $tmp/repo/worktrees/repo-pr-5 ]]'
 check "ugyldig PR avvises" '! pr abc 2>/dev/null'
 
 cd /
