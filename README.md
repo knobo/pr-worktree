@@ -1,6 +1,6 @@
 # pr-worktree
 
-Review GitHub pull requests in their own [git worktrees](https://git-scm.com/docs/git-worktree),
+Review GitHub and Forgejo/Gitea pull requests in their own [git worktrees](https://git-scm.com/docs/git-worktree),
 so you never have to stash or switch branches in your main checkout.
 
 ```
@@ -13,9 +13,13 @@ $ pr clean --merged   # remove every worktree whose PR is merged or closed
 
 ## Installation
 
-Requires `git` >= 2.31, [`gh`](https://cli.github.com/) (logged in with `gh auth login`),
-and [`fzf`](https://github.com/junegunn/fzf) for interactive picking (optional if you always
-pass a PR number). Works in bash and zsh.
+Requires `git` >= 2.31 and [`fzf`](https://github.com/junegunn/fzf) for interactive picking
+(optional if you always pass a PR number), plus:
+
+- GitHub: [`gh`](https://cli.github.com/), logged in with `gh auth login`
+- Forgejo/Gitea: [`tea`](https://gitea.com/gitea/tea), logged in with `tea login add`, and `jq`
+
+Works in bash and zsh.
 
 ```sh
 git clone https://github.com/knobo/pr-worktree
@@ -48,6 +52,16 @@ cd pr-worktree
 a branch that has commits you haven't pushed. Pass `--force` to remove them anyway. If you are
 standing inside the worktree being removed, you are moved back to the repo root.
 
+## GitHub or Forgejo
+
+`pr` looks at the host of the remote (`origin`, or the first one): if it is registered in
+`tea logins`, it talks to Forgejo/Gitea; otherwise it uses `gh`. Override per repo with
+`git config pr.forge forgejo` (or `github`), and pick another remote with `git config pr.remote upstream`.
+
+On Forgejo, a PR from a branch in the same repo is checked out as that branch, tracking the
+remote. A PR from a fork is fetched from `refs/pull/<nr>/head` into a local branch `pr-<nr>`.
+`pr` does not use `tea pr checkout`, which adds a remote per PR author.
+
 ## Where worktrees go
 
 A worktree is named `<repo>-pr-<nr>` and created in the first match of:
@@ -63,7 +77,7 @@ you run it from the root, a subdirectory, or another worktree.
 ## Development
 
 ```sh
-bash test.sh          # smoke test against a temp repo with a stubbed gh
+bash test.sh          # smoke test against temp repos with stubbed gh and tea
 shellcheck -s bash pr-worktree.sh && shellcheck test.sh install.sh
 ```
 
