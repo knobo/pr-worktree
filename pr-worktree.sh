@@ -118,6 +118,15 @@ _pr_head() {
     esac
 }
 
+# Finnes PR-en? Sjekkes før worktreen lages, så et feil nummer ikke etterlater en
+# worktree i detached HEAD.
+_pr_exists() {
+    case $1 in
+        github) gh pr view "$2" --json number >/dev/null 2>&1 ;;
+        forgejo) [[ -n $(_pr_fj_json "$2") ]] ;;
+    esac
+}
+
 # OPEN, CLOSED eller MERGED.
 _pr_state() {
     case $1 in
@@ -189,6 +198,11 @@ _pr_checkout() {
         echo "PR #$num har allerede worktree: $wt"
         cd "$wt" || return 1
         return
+    fi
+
+    if ! _pr_exists "$forge" "$num"; then
+        _pr_err "Fant ikke PR #$num i $(basename "$(_pr_root)")."
+        return 1
     fi
 
     dir=$(_pr_wt_dir) || return 1
