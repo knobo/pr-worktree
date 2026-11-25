@@ -7,10 +7,11 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 # Falsk gh: `pr checkout N` lager branch feature-N, `pr view N` gir headRefName feature-N
-# og sier PR 1 er merget.
+# og sier PR 1 er merget. PR-er fra 90 og oppover finnes ikke.
 mkdir "$tmp/bin"
 cat >"$tmp/bin/gh" <<'EOF'
 #!/usr/bin/env bash
+[[ $1 == pr && $3 =~ ^[0-9]+$ && $3 -ge 90 ]] && { echo "no pull requests found" >&2; exit 1; }
 case "$1 $2" in
   "pr checkout") git checkout -q -b "feature-$3" ;;
   "pr view") if [[ $5 == headRefName* ]]; then echo "feature-$3"
@@ -53,6 +54,10 @@ check "#2 fra inni en worktree havner ved siden av repoet" '[[ $PWD == "$tmp/rep
 cd "$tmp/repo" && pr https://github.com/o/r/pull/1/files >/dev/null
 check "eksisterende worktree gjenbrukes" '[[ $PWD == "$tmp/repo-pr-1" ]]'
 check "list viser begge" '[[ $(pr ls | wc -l) -eq 2 ]]'
+cd "$tmp/repo" || exit 1
+check "ukjent PR feiler" '! pr 99 2>/dev/null'
+check "ukjent PR lager ingen worktree" '[[ ! -d $tmp/repo-pr-99 && $PWD == "$tmp/repo" ]]'
+cd "$tmp/repo-pr-1" || exit 1
 
 touch dirty
 pr clean 1 2>/dev/null
@@ -96,7 +101,8 @@ check "forgejo: ingen ekstra remotes" '[[ $(git remote) == origin ]]'
 pr clean --merged >/dev/null 2>&1
 check "forgejo: clean --merged fjerner merget PR 7, beholder 8" '[[ ! -d $tmp/fj-pr-7 && -d $tmp/fj-pr-8 ]]'
 check "forgejo: ukjent PR feiler" '! pr 99 2>/dev/null'
-cd "$tmp/fj" && pr clean --force 99 >/dev/null 2>&1
+check "forgejo: ukjent PR lager ingen worktree" '[[ ! -d $tmp/fj-pr-99 ]]'
+cd "$tmp/fj" || exit 1
 
 cd "$tmp/fjrepo" && git push -q "$tmp/fj.git" HEAD:refs/pull/9/head
 cd "$tmp/fj" && pr 9 >/dev/null 2>&1
